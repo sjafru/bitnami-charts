@@ -2,12 +2,12 @@
 
 This Helm chart has been developed based on [bitnami/postgresql](https://github.com/bitnami/charts/tree/master/bitnami/postgresql) chart but including some changes to guarantee high availability such as:
 
-- A new deployment, service and ingress have been added to deploy [Pgpool-II](Pgpool-II) to act as proxy for PostgreSQL backend. It helps to reduce connection overhead, acts as a load balancer for PostgreSQL, and ensures database node failover.
+- A new deployment, service have been added to deploy [Pgpool-II](Pgpool-II) to act as proxy for PostgreSQL backend. It helps to reduce connection overhead, acts as a load balancer for PostgreSQL, and ensures database node failover.
 - Replacing `bitnami/postgresql` with `bitnami/postgresql-repmgr` which includes and configures [repmgr](https://repmgr.org/). Repmgr ensures standby nodes assume the primary role when the primary node is unhealthy.
 
 ## TL;DR;
 
-```
+```console
 $ helm repo add bitnami https://charts.bitnami.com/bitnami
 $ helm install my-release bitnami/postgresql-ha
 ```
@@ -19,15 +19,13 @@ This [Helm](https://github.com/kubernetes/helm) chart installs [PostgreSQL](http
 ## Prerequisites
 
 - Kubernetes 1.12+
-- Helm 2.11+ or Helm 3.0-beta3+
-
-> Note: Please, note that pgpool runs the container as root by default setting the `pgpool.securityContext.runAsUser` to `0` (_root_ user) in order to enable LDAP support for now.
+- Helm 2.12+ or Helm 3.0-beta3+
 
 ## Installing the Chart
 
 Install the PostgreSQL HA helm chart with a release name `my-release`:
 
-```bash
+```console
 $ helm repo add bitnami https://charts.bitnami.com/bitnami
 $ helm install my-release bitnami/postgresql-ha
 ```
@@ -36,7 +34,7 @@ $ helm install my-release bitnami/postgresql-ha
 
 To uninstall/delete the `my-release` deployment:
 
-```bash
+```console
 $ helm delete --purge my-release
 ```
 
@@ -74,11 +72,14 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `postgresqlImage.pullPolicy`                   | PostgreSQL with Repmgr image pull policy                                                                                                                             | `IfNotPresent`                                               |
 | `postgresqlImage.pullSecrets`                  | Specify docker-registry secret names as an array                                                                                                                     | `[]` (does not add image pull secrets to deployed pods)      |
 | `postgresqlImage.debug`                        | Specify if debug logs should be enabled                                                                                                                              | `false`                                                      |
+| `postgresql.labels`                            | Map of labels to add to the statefulset. Evaluated as a template                                                                                                     | `{}`                                                         |
+| `postgresql.podLabels`                         | Map of labels to add to the pods. Evaluated as a template                                                                                                            | `{}`                                                         |
 | `postgresql.replicaCount`                      | The number of replicas to deploy                                                                                                                                     | `2`                                                          |
 | `postgresql.updateStrategyType`                | Statefulset update strategy policy                                                                                                                                   | `RollingUpdate`                                              |
 | `postgresql.podAnnotations`                    | Additional pod annotations                                                                                                                                           | `{}`                                                         |
 | `postgresql.affinity`                          | Map of node/pod affinities                                                                                                                                           | `{}` (The value is evaluated as a template)                  |
 | `postgresql.nodeSelector`                      | Node labels for pod assignment                                                                                                                                       | `{}` (The value is evaluated as a template)                  |
+| `postgresql.priorityClassName`                 | Pod priority class                                                                                                                                                   | ``                                                           |
 | `postgresql.tolerations`                       | Tolerations for pod assignment                                                                                                                                       | `[]` (The value is evaluated as a template)                  |
 | `postgresql.securityContext.enabled`           | Enable security context for PostgreSQL with Repmgr                                                                                                                   | `true`                                                       |
 | `postgresql.securityContext.fsGroup`           | Group ID for the PostgreSQL with Repmgr filesystem                                                                                                                   | `1001`                                                       |
@@ -91,7 +92,9 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `postgresql.pdb.maxUnavailable`                | Maximum number / percentage of pods that may be made unavailable                                                                                                     | `nil`                                                        |
 | `postgresql.username`                          | PostgreSQL username                                                                                                                                                  | `postgres`                                                   |
 | `postgresql.password`                          | PostgreSQL password                                                                                                                                                  | `nil`                                                        |
+| `postgresql.postgresPassword`                  | PostgreSQL password for the `postgres` user when `username` is not `postgres`                                                                                        | `nil`                                                        |
 | `postgresql.database`                          | PostgreSQL database                                                                                                                                                  | `postgres`                                                   |
+| `postgresql.usePasswordFile`                   | Have the secrets mounted as a file instead of env vars                                                                                                               | `false`                                                      |
 | `postgresql.upgradeRepmgrExtension`            | Upgrade repmgr extension in the database                                                                                                                             | `false`                                                      |
 | `postgresql.pgHbaTrustAll`                     | Configures PostgreSQL HBA to trust every user                                                                                                                        | `false`                                                      |
 | `postgresql.repmgrUsername`                    | PostgreSQL repmgr username                                                                                                                                           | `repmgr`                                                     |
@@ -108,7 +111,8 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `postgresql.extendedConf`                      | Extended PostgreSQL Configuration (appended to main or default configuration)                                                                                        | `nil`                                                        |
 | `postgresql.extendedConfCM`                    | ConfigMap with the extended PostgreSQL configuration files (Note: Overrides `postgresql.extendedConf`)                                                               | `nil` (The value is evaluated as a template)                 |
 | `postgresql.initdbScripts`                     | Dictionary of initdb scripts                                                                                                                                         | `nil`                                                        |
-| `postgresql.initdbScriptsCM`                   | ConfigMap with the initdb scripts (Note: Overrides `initdbScripts`)                                                                                                  | `nil` (The value is evaluated as a template)                 |
+| `postgresql.initdbScriptsCM`                   | ConfigMap with the initdb scripts (Note: Overrides `initdbScripts`). The value is evaluated as a template.                                                           | `nil`                                                        |
+| `postgresql.initdbScriptsSecret`               | Secret with initdb scripts that contain sensitive information (Note: can be used with initdbScriptsCM or initdbScripts). The value is evaluated as a template.       | `nil`                                                        |
 | **Pgpool**                                     |                                                                                                                                                                      |                                                              |
 | `pgpoolImage.registry`                         | Registry for Pgpool                                                                                                                                                  | `docker.io`                                                  |
 | `pgpoolImage.repository`                       | Repository for Pgpool                                                                                                                                                | `bitnami/pgpool`                                             |
@@ -116,25 +120,35 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `pgpoolImage.pullPolicy`                       | Pgpool image pull policy                                                                                                                                             | `IfNotPresent`                                               |
 | `pgpoolImage.pullSecrets`                      | Specify docker-registry secret names as an array                                                                                                                     | `[]` (does not add image pull secrets to deployed pods)      |
 | `pgpoolImage.debug`                            | Specify if debug logs should be enabled                                                                                                                              | `false`                                                      |
+| `pgpool.labels`                                | Map of labels to add to the deployment. Evaluated as a template                                                                                                      | `{}`                                                         |
+| `pgpool.podLabels`                             | Map of labels to add to the pods. Evaluated as a template                                                                                                            | `{}`                                                         |
 | `pgpool.replicaCount`                          | The number of replicas to deploy                                                                                                                                     | `2`                                                          |
 | `pgpool.podAnnotations`                        | Additional pod annotations                                                                                                                                           | `{}`                                                         |
 | `pgpool.affinity`                              | Map of node/pod affinities                                                                                                                                           | `{}` (The value is evaluated as a template)                  |
+| `pgpool.initdbScripts`                         | Dictionary of initdb scripts                                                                                                                                         | `nil`                                                        |
+| `pgpool.initdbScriptsCM`                       | ConfigMap with the initdb scripts (Note: Overrides `initdbScripts`). The value is evaluated as a template.                                                           | `nil`                                                        |
+| `pgpool.initdbScriptsSecret`                   | Secret with initdb scripts that contain sensitive information (Note: can be used with initdbScriptsCM or initdbScripts). The value is evaluated as a template.       | `nil`                                                        |
 | `pgpool.nodeSelector`                          | Node labels for pod assignment                                                                                                                                       | `{}` (The value is evaluated as a template)                  |
+| `pgpool.priorityClassName`                     | Pod priority class                                                                                                                                                   | ``                                                           |
 | `pgpool.tolerations`                           | Tolerations for pod assignment                                                                                                                                       | `[]` (The value is evaluated as a template)                  |
 | `pgpool.securityContext.enabled`               | Enable security context for Pgpool                                                                                                                                   | `true`                                                       |
-| `pgpool.securityContext.fsGroup`               | Group ID for the Pgpool filesystem                                                                                                                                   | `0`                                                          |
-| `pgpool.securityContext.runAsUser`             | User ID for the Pgpool container                                                                                                                                     | `0`                                                          |
+| `pgpool.securityContext.fsGroup`               | Group ID for the Pgpool filesystem                                                                                                                                   | `1001`                                                       |
+| `pgpool.securityContext.runAsUser`             | User ID for the Pgpool container                                                                                                                                     | `1001`                                                       |
 | `pgpool.resources`                             | The [resources] to allocate for container                                                                                                                            | `{}`                                                         |
 | `pgpool.livenessProbe`                         | Liveness probe configuration for Pgpool                                                                                                                              | `Check values.yaml file`                                     |
 | `pgpool.readinessProbe`                        | Readiness probe configuration for Pgpool                                                                                                                             | `Check values.yaml file`                                     |
 | `pgpool.pdb.create`                            | If true, create a pod disruption budget for Pgpool pods.                                                                                                             | `false`                                                      |
 | `pgpool.pdb.minAvailable`                      | Minimum number / percentage of pods that should remain scheduled                                                                                                     | `1`                                                          |
 | `pgpool.pdb.maxUnavailable`                    | Maximum number / percentage of pods that may be made unavailable                                                                                                     | `nil`                                                        |
+| `pgpool.updateStrategy`                        | Strategy used to replace old Pods by new ones                                                                                                                        | `{}`                                                         |
+| `pgpool.minReadySeconds`                       | How many seconds a pod needs to be ready before killing the next, during update                                                                                      | `nil`                                                        |
 | `pgpool.adminUsername`                         | Pgpool Admin username                                                                                                                                                | `admin`                                                      |
 | `pgpool.adminPassword`                         | Pgpool Admin password                                                                                                                                                | `nil`                                                        |
+| `pgpool.maxPool`                               | The maximum number of cached connections in each child process                                                                                                       | `15`                                                         |
+| `pgpool.numInitChildren`                       | The number of preforked Pgpool-II server processes.                                                                                                                  | `32`                                                         |
 | `pgpool.configuration`                         | Content of pgpool.conf                                                                                                                                               | `nil`                                                        |
-| `pgpool.configurationCM`                       | ConfigMap with the Pgpool configuration file (Note: Overrides `pgpol.configuration`)                                                                                 | `nil` (The value is evaluated as a template)                 |
-| `pgpool.useLoadBalancing`                      | If true, use Pgpool Load-Balancing                                                                                                                                   | `true`                                                        |
+| `pgpool.configurationCM`                       | ConfigMap with the Pgpool configuration file (Note: Overrides `pgpol.configuration`). The file used must be named `pgpool.conf`.                                     | `nil` (The value is evaluated as a template)                 |
+| `pgpool.useLoadBalancing`                      | If true, use Pgpool Load-Balancing                                                                                                                                   | `true`                                                       |
 | **LDAP**                                       |                                                                                                                                                                      |                                                              |
 | `ldap.enabled`                                 | Enable LDAP support                                                                                                                                                  | `false`                                                      |
 | `ldap.existingSecret`                          | Name of existing secret to use for LDAP passwords                                                                                                                    | `nil`                                                        |
@@ -163,6 +177,8 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `metrics.serviceMonitor.namespace`             | Optional namespace which Prometheus is running in                                                                                                                    | `nil`                                                        |
 | `metrics.serviceMonitor.interval`              | How frequently to scrape metrics (use by default, falling back to Prometheus' default)                                                                               | `nil`                                                        |
 | `metrics.serviceMonitor.selector`              | Default to kube-prometheus install (CoreOS recommended), but should be set according to Prometheus install                                                           | `{prometheus: "kube-prometheus"}`                            |
+| `metrics.serviceMonitor.relabelings`           | ServiceMonitor relabelings. Value is evaluated as a template                                                                                                         | `[]`                                                         |
+| `metrics.serviceMonitor.metricRelabelings`     | ServiceMonitor metricRelabelings. Value is evaluated as a template                                                                                                   | `[]`                                                         |
 | **Init Container to adapt volume permissions** |                                                                                                                                                                      |                                                              |
 | `volumePermissionsImage.registry`              | Registry for Bitnami Minideb                                                                                                                                         | `docker.io`                                                  |
 | `volumePermissionsImage.repository`            | Repository for Bitnami Minideb                                                                                                                                       | `bitnami/minideb`                                            |
@@ -170,7 +186,7 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `volumePermissionsImage.pullPolicy`            | Bitnami Minideb exporter image pull policy                                                                                                                           | `Always`                                                     |
 | `volumePermissionsImage.pullSecrets`           | Specify docker-registry secret names as an array                                                                                                                     | `[]` (does not add image pull secrets to deployed pods)      |
 | `volumePermissions.enabled`                    | Enable init container to adapt volume permissions                                                                                                                    | `false`                                                      |
-| `volumePermissions.securityContext.enabled`    | Enable security context for Bitnami Minideb                                                                                                                          | `true`                                                       |
+| `volumePermissions.securityContext.enabled`    | Enable security context for Bitnami Minideb                                                                                                                          | `false`                                                      |
 | `volumePermissions.securityContext.runAsUser`  | User ID for the Bitnami Minideb container                                                                                                                            | `0`                                                          |
 | **Persistence**                                |                                                                                                                                                                      |                                                              |
 | `persistence.enabled`                          | Enable data persistence                                                                                                                                              | `true`                                                       |
@@ -188,16 +204,6 @@ The following table lists the configurable parameters of the PostgreSQL HA chart
 | `service.loadBalancerIP`                       | loadBalancerIP if service type is `LoadBalancer`                                                                                                                     | `nil`                                                        |
 | `service.loadBalancerSourceRanges`             | Address that are allowed when service is LoadBalancer                                                                                                                | `[]`                                                         |
 | `service.clusterIP`                            | Static clusterIP or None for headless services                                                                                                                       | `nil`                                                        |
-| `ingress.enabled`                              | Enable ingress controller resource                                                                                                                                   | `false`                                                      |
-| `ingress.certManager`                          | Add annotations for cert-manager                                                                                                                                     | `false`                                                      |
-| `ingress.annotations`                          | Ingress annotations                                                                                                                                                  | `[]`                                                         |
-| `ingress.hosts[0].name`                        | Hostname for PostgreSQL service                                                                                                                                      | `postgresql.local`                                           |
-| `ingress.hosts[0].path`                        | Path within the url structure                                                                                                                                        | `/`                                                          |
-| `ingress.tls[0].hosts[0]`                      | TLS hosts                                                                                                                                                            | `postgresql.local`                                           |
-| `ingress.tls[0].secretName`                    | TLS Secret (certificates)                                                                                                                                            | `postgresql.local-tls`                                       |
-| `ingress.secrets[0].name`                      | TLS Secret Name                                                                                                                                                      | `nil`                                                        |
-| `ingress.secrets[0].certificate`               | TLS Secret Certificate                                                                                                                                               | `nil`                                                        |
-| `ingress.secrets[0].key`                       | TLS Secret Key                                                                                                                                                       | `nil`                                                        |
 | `networkPolicy.enabled`                        | Enable NetworkPolicy                                                                                                                                                 | `false`                                                      |
 | `networkPolicy.allowExternal`                  | Don't require client label for connections                                                                                                                           | `true`                                                       |
 
@@ -214,7 +220,9 @@ The above command sets the password for user `postgres` to `password`.
 Alternatively, a YAML file that specifies the values for the above parameters can be provided while installing the chart. For example,
 
 ```console
-$ helm install my-release -f values.yaml bitnami/postgresql-ha
+$ helm install my-release \
+    -f values.yaml \
+    bitnami/postgresql-ha
 ```
 
 ## Configuration and installation details
@@ -249,11 +257,10 @@ To horizontally scale this chart, you can use the `--replicaCount` flag to modif
 
 ### Change PostgreSQL version
 
-To modify the PostgreSQL version used in this chart you can specify a [valid image tag](https://hub.docker.com/r/bitnami/postgresql/tags/) using the `image.tag` parameter. For example, `image.tag=12.0.0`
+To modify the PostgreSQL version used in this chart you can specify a [valid image tag](https://hub.docker.com/r/bitnami/postgresql-repmgr/tags/) using the `image.tag` parameter. For example, `image.tag=X.Y.Z`. This approach is also applicable to other images like exporters.
 
 ### Configure the way how to expose PostgreSQL
 
-- **Ingress**: The ingress controller must be installed in the Kubernetes cluster. Set `ingress.enabled=true` to expose PostgreSQL through Ingress.
 - **ClusterIP**: Exposes the service on a cluster-internal IP. Choosing this value makes the service only reachable from within the cluster. Set `service.type=ClusterIP` to choose this service type.
 - **NodePort**: Exposes the service on each Node's IP at a static port (the NodePort). You’ll be able to contact the NodePort service, from outside the cluster, by requesting `NodeIP:NodePort`. Set `service.type=NodePort` to choose this service type.
 - **LoadBalancer**: Exposes the service externally using a cloud provider's load balancer. Set `service.type=LoadBalancer` to choose this service type.
@@ -332,7 +339,7 @@ The allowed extensions are `.sh`, `.sql` and `.sql.gz`.
 
 In more complex scenarios, we may have the following tree of dependencies
 
-```
+```bash
                      +--------------+
                      |              |
         +------------+   Chart 1    +-----------+
@@ -352,7 +359,7 @@ In more complex scenarios, we may have the following tree of dependencies
 
 The three charts below depend on the parent chart Chart 1. However, subcharts 1 and 2 may need to connect to PostgreSQL HA as well. In order to do so, subcharts 1 and 2 need to know the PostgreSQL HA credentials, so one option for deploying could be deploy Chart 1 with the following parameters:
 
-```
+```bash
 postgresql.postgresqlPassword=testtest
 subchart1.postgresql.postgresqlPassword=testtest
 subchart2.postgresql.postgresqlPassword=testtest
@@ -363,7 +370,7 @@ subchart2.postgresql.postgresqlDatabase=db1
 
 If the number of dependent sub-charts increases, installing the chart with parameters can become increasingly difficult. An alternative would be to set the credentials using global variables as follows:
 
-```
+```bash
 global.postgresql.postgresqlPassword=testtest
 global.postgresql.postgresqlDatabase=db1
 ```
@@ -386,6 +393,40 @@ $ helm upgrade my-release bitnami/postgresql-ha \
 ```
 
 > Note: you need to substitute the placeholders _[POSTGRESQL_PASSWORD]_, and _[REPMGR_PASSWORD]_ with the values obtained from instructions in the installation notes.
+
+## 3.0.0
+
+A new major version of repmgr (5.1.0) was included. To upgrade to this major version, it's necessary to upgrade the repmgr extension installed on the database. To do so, follow the steps below:
+
+- Reduce your PostgreSQL setup to one replica (primary node) and upgrade to `3.0.0`, enabling the repmgr extension upgrade:
+
+```bash
+$ helm upgrade my-release --version 3.0.0 bitnami/postgresql-ha \
+    --set postgresql.password=[POSTGRESQL_PASSWORD] \
+    --set postgresql.repmgrPassword=[REPMGR_PASSWORD] \
+    --set postgresql.replicaCount=1 \
+    --set postgresql.upgradeRepmgrExtension=true
+```
+
+- Scale your PostgreSQL setup to the original number of replicas:
+
+```bash
+$ helm upgrade my-release --version 3.0.0 bitnami/postgresql-ha \
+    --set postgresql.password=[POSTGRESQL_PASSWORD] \
+    --set postgresql.repmgrPassword=[REPMGR_PASSWORD] \
+    --set postgresql.replicaCount=[NUMBER_OF_REPLICAS]
+```
+
+> Note: you need to substitute the placeholders _[POSTGRESQL_PASSWORD]_, and _[REPMGR_PASSWORD]_ with the values obtained from instructions in the installation notes.
+
+## 2.0.0
+
+The [Bitnami Pgpool](https://github.com/bitnami/bitnami-docker-pgpool) image was migrated to a "non-root" user approach. Previously the container ran as the `root` user and the Pgpool daemon was started as the `pgpool` user. From now on, both the container and the Pgpool daemon run as user `1001`. You can revert this behavior by setting the parameters `pgpool.securityContext.runAsUser`, and `pgpool.securityContext.fsGroup` to `0`.
+
+Consequences:
+
+- No backwards compatibility issues are expected since all the data is at PostgreSQL pods, and Pgpool uses a deployment without persistence. Therefore, upgrades should work smoothly from `1.x.x` versions.
+- Environment variables related to LDAP configuration were renamed removing the `PGPOOL_` prefix. For instance, to indicate the LDAP URI to use, you must set `LDAP_URI` instead of `PGPOOL_LDAP_URI`
 
 ## 1.0.0
 
@@ -416,9 +457,9 @@ $ helm upgrade my-release --version 1.0.0 bitnami/postgresql-ha \
 
 In this version, the chart will use PostgreSQL-Repmgr container images with the Postgis extension included. The version used in Postgresql version 10, 11 and 12 is Postgis 2.5, and in Postgresql 9.6 is Postgis 2.3. Postgis has been compiled with the following dependencies:
 
- - protobuf
- - protobuf-c
- - json-c
- - geos
- - proj
- - gdal
+- protobuf
+- protobuf-c
+- json-c
+- geos
+- proj
+- gdal

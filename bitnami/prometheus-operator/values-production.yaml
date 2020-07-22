@@ -3,13 +3,13 @@
 ## Current available global Docker image parameters: imageRegistry and imagePullSecrets
 ##
 global:
-#   imageRegistry: myRegistryName
-#   imagePullSecrets:
-#     - myRegistryKeySecretName
-#   storageClass: myStorageClass
+  #   imageRegistry: myRegistryName
+  #   imagePullSecrets:
+  #     - myRegistryKeySecretName
+  #   storageClass: myStorageClass
 
   labels: {}
-    # foo: bar
+  # foo: bar
 
 ## String to partially override prometheus.fullname template (will maintain the release name)
 ##
@@ -42,7 +42,7 @@ operator:
   image:
     registry: docker.io
     repository: bitnami/prometheus-operator
-    tag: 0.37.0-debian-10-r10
+    tag: 0.40.0-debian-10-r25
     ## Specify a imagePullPolicy
     ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
     ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -171,6 +171,10 @@ operator:
   ##
   tolerations: []
 
+  ## Priority class assigned to the Pods
+  ##
+  priorityClassName: ""
+
   ## Configure extra options for liveness and readiness probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes)
   ##
@@ -196,6 +200,14 @@ operator:
   ##
   logFormat: logfmt
 
+  ## Set the prometheus config reloader side-car CPU limit. If unset, uses the prometheus-operator project default
+  ##
+  # configReloaderCpu: 100m
+
+  ## Set the prometheus config reloader side-car memory limit. If unset, uses the prometheus-operator project default
+  ##
+  # configReloaderMemory: 25Mi
+
   ## If true, the operator will create and maintain a service for scraping kubelets
   ##
   kubeletService:
@@ -208,7 +220,7 @@ operator:
     image:
       registry: docker.io
       repository: bitnami/configmap-reload
-      tag: 0.3.0-debian-10-r42
+      tag: 0.4.0-debian-10-r3
       ## Optionally specify an array of imagePullSecrets.
       ## Secrets must be manually created in the namespace.
       ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -218,15 +230,15 @@ operator:
 
   prometheusConfigReloader:
     image: {}
-      # registry:
-      # repository:
-      # tag:
-      ## Optionally specify an array of imagePullSecrets.
-      ## Secrets must be manually created in the namespace.
-      ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-      ##
-      # pullSecrets:
-      #   - myRegistryKeySecretName
+    # registry:
+    # repository:
+    # tag:
+    ## Optionally specify an array of imagePullSecrets.
+    ## Secrets must be manually created in the namespace.
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    ##
+    # pullSecrets:
+    #   - myRegistryKeySecretName
 
 ## Deploy a Prometheus instance
 ##
@@ -239,7 +251,7 @@ prometheus:
   image:
     registry: docker.io
     repository: bitnami/prometheus
-    tag: 2.16.0-debian-10-r27
+    tag: 2.19.2-debian-10-r16
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -257,6 +269,10 @@ prometheus:
     ## The name of the ServiceAccount to use.
     ## If not set and create is true, a name is generated using the prometheus-operator.prometheus.fullname template
     # name:
+
+    ## Annotations to add to the ServiceAccount (evaluated as a template)
+    # annotations:
+    #   eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/prometheus
 
   ## SecurityContext configuration
   ##
@@ -297,6 +313,10 @@ prometheus:
     ##
     # loadBalancerSourceRanges:
     # - 10.10.10.0/24
+
+    ## Session Affinity
+    ## Set stickySessions to true to enable Session Affinity
+    # stickySessions: true
 
     ## Provide any additional annotations which may be required.
     ##
@@ -344,8 +364,8 @@ prometheus:
     ## The list of hostnames to be covered with this ingress record.
     ## Most likely this will be just one host, but in the event more hosts are needed, this is an array
     hosts:
-    - name: prometheus.local
-      path: /
+      - name: prometheus.local
+        path: /
 
     ## The tls configuration for the ingress
     ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
@@ -353,6 +373,12 @@ prometheus:
     ## - hosts:
     ##     - prometheus.local
     ##   secretName: prometheus.local-tls
+    tls: {}
+
+  ## If not creating an ingress but still exposing the service some other way (like a proxy)
+  ## let Prometheus know what its external URL is so that it can properly create links
+  #
+  # externalUrl: https://prometheus.example.com
 
   ## Configure resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
@@ -368,6 +394,7 @@ prometheus:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   ##
   podAntiAffinity: soft
+  podAntiAffinityTopologyKey: "kubernetes.io/hostname"
 
   ## Pod Affinity. The value is evaluated as a template.
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -453,8 +480,8 @@ prometheus:
   ## If {}, select all ServiceMonitors
   ##
   serviceMonitorSelector: {}
-    # matchLabels:
-    #   foo: bar
+  # matchLabels:
+  #   foo: bar
 
   ## Namespaces to be selected for ServiceMonitor discovery.
   ## See https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#namespaceselector for usage
@@ -468,6 +495,12 @@ prometheus:
   ## Maximum size of metrics
   ##
   retentionSize: ""
+
+  ## Disable the compaction of the Prometheus TSDB
+  ## See https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#prometheusspec
+  ## ref: https://prometheus.io/docs/prometheus/latest/storage/#compaction
+  ##
+  disableCompaction: false
 
   ## Enable compression of the write-ahead log using Snappy.
   ##
@@ -492,10 +525,11 @@ prometheus:
   ## Standard object’s metadata
   ## ref: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
   ##
-  podMetadata: {}
-  # labels:
-  #   app: prometheus
-  #   k8s-app: prometheus
+  podMetadata:
+    labels: {}
+    # app: prometheus
+    # k8s-app: prometheus
+    annotations: {}
 
   ## The remote_read spec configuration for Prometheus.
   ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#remotereadspec
@@ -514,6 +548,28 @@ prometheus:
   ##
   storageSpec: {}
 
+  ## Prometheus persistence parameters
+  ##
+  persistence:
+    ## The storageSpec takes precedence before this persistence configuration.
+    ## If you want to use this configuration make sure the storageSpec is not provided.
+    ##
+    enabled: false
+    ## Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ## set, choosing the default provisioner.
+    ##
+    # storageClass: "-"
+    ## Persistent Volume Access Mode
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## Persistent Volume Claim size
+    ##
+    size: 8Gi
+
   ## Priority class assigned to the Pods
   ##
   priorityClassName: ""
@@ -521,6 +577,58 @@ prometheus:
   ## Containers allows injecting additional containers
   ##
   containers: []
+
+  ## Volumes allows configuration of additonal volumes. Evaluated as a template
+  ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#prometheusspec
+  volumes: []
+
+  ## VolumeMounts allows configuration of additional VolumeMounts. Evaluated as a template
+  ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#prometheusspec
+  volumeMounts: []
+
+  ## PrometheusRule defines recording and alerting rules for a Prometheus instance.
+  ##
+  additionalPrometheusRules: []
+  # - name: custom-recording-rules
+  #  groups:
+  #    - name: sum_node_by_job
+  #      rules:
+  #        - record: job:kube_node_labels:sum
+  #          expr: sum(kube_node_labels) by (job)
+  #    - name: sum_prometheus_config_reload_by_pod
+  #      rules:
+  #        - record: job:prometheus_config_last_reload_successful:sum
+  #          expr: sum(prometheus_config_last_reload_successful) by (pod)
+  # - name: custom-alerting-rules
+  #  groups:
+  #    - name: prometheus-config
+  #      rules:
+  #        - alert: PrometheusConfigurationReload
+  #          expr: prometheus_config_last_reload_successful > 0
+  #          for: 1m
+  #          labels:
+  #            severity: error
+  #          annotations:
+  #            summary: "Prometheus configuration reload (instance {{ $labels.instance }})"
+  #            description: "Prometheus configuration reload error\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+  #    - name: custom-node-exporter-alerting-rules
+  #      rules:
+  #        - alert: PhysicalComponentTooHot
+  #          expr: node_hwmon_temp_celsius > 75
+  #          for: 5m
+  #          labels:
+  #            severity: warning
+  #          annotations:
+  #            summary: "Physical component too hot (instance {{ $labels.instance }})"
+  #            description: "Physical hardware component too hot\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+  #        - alert: NodeOvertemperatureAlarm
+  #          expr: node_hwmon_temp_alarm == 1
+  #          for: 5m
+  #          labels:
+  #            severity: critical
+  #          annotations:
+  #            summary: "Node overtemperature alarm (instance {{ $labels.instance }})"
+  #            description: "Physical node temperature alarm triggered\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
 
   ## Enable additional scrape configs that are managed externally to this chart
   ##
@@ -538,7 +646,7 @@ prometheus:
     image:
       registry: docker.io
       repository: bitnami/thanos
-      tag: 0.11.0-scratch-r4
+      tag: 0.14.0-scratch-r0
       ## Specify a imagePullPolicy. Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
       ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
       ##
@@ -584,6 +692,15 @@ prometheus:
       ##
       annotations: {}
 
+      ## Extra ports to expose from the Thanos sidecar container
+      ##
+      # extraPorts:
+      #   - name: http
+      #     port: 10902
+      #     targetPort: http
+      #     protocol: TCP
+      extraPorts: []
+
 ## Configuration for alertmanager
 ## ref: https://prometheus.io/docs/alerting/alertmanager/
 ##
@@ -596,7 +713,7 @@ alertmanager:
   image:
     registry: docker.io
     repository: bitnami/alertmanager
-    tag: 0.20.0-debian-10-r42
+    tag: 0.21.0-debian-10-r25
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -614,6 +731,10 @@ alertmanager:
     ## The name of the ServiceAccount to use.
     ## If not set and create is true, a name is generated using the prometheus-operator.alertmanager.fullname template
     # name:
+
+    ## Annotations to add to the ServiceAccount (evaluated as a template)
+    # annotations:
+    #   eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/alertmanager
 
   ## SecurityContext configuration
   ##
@@ -654,6 +775,10 @@ alertmanager:
     ##
     # loadBalancerSourceRanges:
     # - 10.10.10.0/24
+
+    ## Session Affinity
+    ## Set stickySessions to true to enable Session Affinity
+    # stickySessions: true
 
     ## Provide any additional annotations which may be required.
     ##
@@ -703,8 +828,8 @@ alertmanager:
     ## The list of hostnames to be covered with this ingress record.
     ## Most likely this will be just one host, but in the event more hosts are needed, this is an array
     hosts:
-    - name: alertmanager.local
-      path: /
+      - name: alertmanager.local
+        path: /
 
     ## The tls configuration for the ingress
     ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
@@ -712,6 +837,12 @@ alertmanager:
     ## - hosts:
     ##     - alertmanager.local
     ##   secretName: alertmanager.local-tls
+    tls: {}
+
+  ## If not creating an ingress but still exposing the service some other way (like a proxy)
+  ## let Alertmanager know what its external URL is so that it can properly create links
+  #
+  # externalUrl: https://alertmanager.example.com
 
   ## Configure resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
@@ -727,6 +858,7 @@ alertmanager:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   ##
   podAntiAffinity: soft
+  podAntiAffinityTopologyKey: "kubernetes.io/hostname"
 
   ## Pod Affinity. The value is evaluated as a template.
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -756,11 +888,21 @@ alertmanager:
       repeat_interval: 12h
       receiver: 'null'
       routes:
-      - match:
-          alertname: Watchdog
-        receiver: 'null'
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
     receivers:
-    - name: 'null'
+      - name: 'null'
+
+  ## Alertmanager configuration is created externally
+  ## If true, `alertmanager.config` is ignored, and a secret will not be created.
+  ##
+  ## Alertmanager requires a secret named `alertmanager-{{ template "prometheus-operator.alertmanager.fullname" . }}`
+  ## It must contain:
+  ##     alertmanager.yaml: <config>
+  ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/alerting.md#alerting
+  ##
+  externalConfig: false
 
   ## Desired number of Alertmanager nodes
   ##
@@ -774,10 +916,12 @@ alertmanager:
   ##
   logFormat: logfmt
 
-  ## Standard object’s metadata. 
+  ## Standard object’s metadata.
   ## ref: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
   ##
-  podMetadata: {}
+  podMetadata:
+    labels: {}
+    annotations: {}
 
   ## Secrets that should be mounted into the Alertmanager Pods
   ##
@@ -796,6 +940,28 @@ alertmanager:
   ##
   storageSpec: {}
 
+  ## Alertmanager persistence parameters
+  ##
+  persistence:
+    ## The storageSpec takes precedence before this persistence configuration.
+    ## If you want to use this configuration make sure the storageSpec is not provided.
+    ##
+    enabled: false
+    ## Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ## set, choosing the default provisioner.
+    ##
+    # storageClass: "-"
+    ## Persistent Volume Access Mode
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## Persistent Volume Claim size
+    ##
+    size: 8Gi
+
   ## If true, the Operator won't process any Alertmanager configuration changes
   ##
   paused: false
@@ -807,6 +973,14 @@ alertmanager:
   ## Containers allows injecting additional containers
   ##
   containers: []
+
+  ## Volumes allows configuration of additonal volumes. Evaluated as a template
+  ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#alertmanagerspec
+  volumes: []
+
+  ## VolumeMounts allows configuration of additional VolumeMounts. Evaluated as a template
+  ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#alertmanagerspec
+  volumeMounts: []
 
   ## Priority class assigned to the Pods
   ##
@@ -851,6 +1025,49 @@ kubeApiServer:
   enabled: true
 
   serviceMonitor:
+    ## Scrape interval. If not set, the Prometheus default scrape interval is used.
+    ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
+    ##
+    interval: ""
+
+    ## Metric relabeling
+    ## ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+    ##
+    metricRelabelings: []
+
+    ## Relabel configs
+    ## ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+    ##
+    relabelings: []
+
+## Component scraping the kube-proxy
+kubeProxy:
+  ## Create a ServiceMonitor to scrape kube-proxy service
+  enabled: true
+
+  ## If your kube-proxy is not deployed as a pod, specify IPs it can be found on
+  endpoints: []
+  # - 10.141.4.22
+  # - 10.141.4.23
+  # - 10.141.4.24
+
+  ## Namespace where kube-proxy service is deployed
+  namespace: kube-system
+
+  ## Service ports and selector information
+  service:
+    enabled: true
+    port: 10249
+    targetPort: 10249
+    # selector:
+    #   k8s-app: kube-proxy
+
+  serviceMonitor:
+    ## Enable scraping kube-proxy over https.
+    ## Requires proper certs (not self-signed) and delegated authentication/authorization checks
+    ##
+    https: false
+
     ## Scrape interval. If not set, the Prometheus default scrape interval is used.
     ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
     ##

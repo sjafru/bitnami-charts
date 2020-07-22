@@ -1,9 +1,10 @@
-{{- if .Values.dashboardsProvider.enabled }}
+{{- if and .Values.dashboardsProvider.enabled (not .Values.dashboardsProvider.configMapName) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "grafana.fullname" . }}-provider
   labels: {{- include "grafana.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
 data:
   default-provider.yaml: |-
     apiVersion: 1

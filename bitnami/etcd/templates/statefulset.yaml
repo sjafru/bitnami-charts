@@ -40,6 +40,9 @@ spec:
       {{- if .Values.tolerations }}
       tolerations: {{- include "etcd.tplValue" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
       {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       {{- if .Values.securityContext.enabled }}
       securityContext:
         fsGroup: {{ .Values.securityContext.fsGroup }}
@@ -126,9 +129,13 @@ spec:
             - name: ETCD_INITIAL_CLUSTER_TOKEN
               value: "etcd-cluster-k8s"
             - name: ETCD_INITIAL_CLUSTER_STATE
-              value: "new"
+              value: {{ .Values.etcd.initialClusterState }}
+            {{- $initialCluster := list }}
+            {{- range $e, $i := until $replicaCount }}
+            {{- $initialCluster = append $initialCluster (printf "%s-%d=%s://%s-%d.%s.%s.svc.%s:%d" $etcdFullname $i $etcdPeerProtocol $etcdFullname $i $etcdHeadlessServiceName $releaseNamespace $clusterDomain $peerPort) }}
+            {{- end }}
             - name: ETCD_INITIAL_CLUSTER
-              value: {{range $i, $e := until $replicaCount }}{{ $etcdFullname }}-{{ $e }}={{ $etcdPeerProtocol }}://{{ $etcdFullname }}-{{ $e }}.{{ $etcdHeadlessServiceName }}.{{ $releaseNamespace }}.svc.{{ $clusterDomain }}:{{ $peerPort }},{{ end }}
+              value: {{ join "," $initialCluster | quote }}
             {{- end }}
             - name: ALLOW_NONE_AUTHENTICATION
               value: {{ ternary "yes" "no" (or .Values.auth.rbac.enabled .Values.allowNoneAuthentication) | quote }}

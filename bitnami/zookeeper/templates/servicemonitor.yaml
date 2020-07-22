@@ -5,18 +5,26 @@ metadata:
   name: {{ template "zookeeper.fullname" . }}
   {{- if .Values.metrics.serviceMonitor.namespace }}
   namespace: {{ .Values.metrics.serviceMonitor.namespace }}
+  {{- else }}
+  namespace: {{ .Release.Namespace }}
   {{- end }}
   labels: {{- include "zookeeper.labels" . | nindent 4 }}
-    app.kubernetes.io/component: metrics
+    app.kubernetes.io/component: zookeeper
     {{- range $key, $value := .Values.metrics.serviceMonitor.selector }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
+    {{- if .Values.commonLabels }}
+    {{- include "zookeeper.tplvalue" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "zookeeper.tplvalue" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     matchLabels: {{- include "zookeeper.matchLabels" . | nindent 6 }}
-      app.kubernetes.io/component: metrics
+      app.kubernetes.io/component: zookeeper
   endpoints:
-    - port: metrics
+    - port: tcp-metrics
       path: "/metrics"
       {{- if .Values.metrics.serviceMonitor.interval }}
       interval: {{ .Values.metrics.serviceMonitor.interval }}
